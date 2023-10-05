@@ -30,10 +30,45 @@ contract CounterTest is Test {
     staking = new Staking(address(token), address(rewardToken));
     bool success = rewardToken.transfer(address(staking), rewardToken.balanceOf(owner));
     if (!success) revert CustomError();
-    console.log("deploying contracts");
+    // console.log("deploying contracts");
   }
 
+  function testNormalStakingResult() public {
+    uint256 amount = 10;
+    token.transfer(alice, amount);
+    vm.startPrank(alice);
+
+    token.approve(address(staking), 1);
+    console.log('TEST: Alice stakes');
+    staking.stake(1);
+    assertEq(staking.s_balances(alice), 1);
+    uint256 startingEarned = staking.earned(alice);
+
+    console.log('TEST: Alice Starting earned: ', startingEarned);
+    skip(1);
+    console.log('TEST: forward time');
+
+    uint256 endingEarnedAlice1 = staking.earned(alice);
+    console.log('TEST: Alice earned so far: ', endingEarnedAlice1);
+
+    token.approve(address(staking), amount - 1);
+    console.log('TEST: Alice stakes');
+    staking.stake(amount - 1);
+    assertEq(staking.s_balances(alice), amount);
+    skip(9);
+    console.log('TEST: forward time');
+
+    uint256 endingEarnedAlice2 = staking.earned(alice);
+    console.log('TEST: Alice earned so far: ', endingEarnedAlice2);
+    // 100 + 900 = 1000
+  }
+
+  // function testLowerStakingRewards() {
+
+  // }
+
   function testStaking() public {
+    console.log('-----------------------------------------------------------------------------------------------');
     // vm.prank(address)
     // vm.startPrank(address)
     // vm.stopPrank(address)
@@ -44,32 +79,35 @@ contract CounterTest is Test {
     token.transfer(bob, amount);
     vm.startPrank(alice);
 
-    token.approve(address(staking), amount);
-    staking.stake(amount);
-    console.log('Alice stakes');
-    assertEq(staking.s_balances(alice), amount);
+    token.approve(address(staking), 1);
+    console.log('TEST: Alice stakes');
+    staking.stake(1);
+    // assertEq(staking.s_balances(alice), amount);
 
     uint256 startingEarned = staking.earned(alice);
 
-    console.log('Alice Starting earned: ', startingEarned);
+    console.log('TEST: Alice Starting earned: ', startingEarned);
+    console.log('-----------------------------------------------------------------------------------------------');
 
-    skip(10);
-    console.log('forward time');
+    skip(1);
+    console.log('TEST: forward time');
 
     uint256 endingEarnedAlice1 = staking.earned(alice);
-    console.log('Alice earned so far: ', endingEarnedAlice1);
+    console.log('TEST: Alice earned so far: ', endingEarnedAlice1);
+    console.log('-----------------------------------------------------------------------------------------------');
     vm.stopPrank();
 
     vm.startPrank(bob);
-    token.approve(address(staking), amount);
-    staking.stake(amount);
-    console.log('Bob stakes');
-    skip(10);
-    console.log('forward time');
+    token.approve(address(staking), 1);
+    staking.stake(1);
+    console.log('TEST: Bob stakes');
+    skip(1);
+    console.log('TEST: forward time');
     uint256 endingEarnedAlice2 = staking.earned(alice);
     uint256 endingEarnedBob = staking.earned(bob);
-    console.log('Alice earned: ', endingEarnedAlice2);
-    console.log('Bob earned: ', endingEarnedBob);
+    console.log('TEST: Alice earned: ', endingEarnedAlice2);
+    console.log('TEST: Bob earned: ', endingEarnedBob);
+    console.log('-----------------------------------------------------------------------------------------------');
 
     // staking.claimReward();
     // console.log('Reward token balance', rewardToken.balanceOf(alice));

@@ -5,6 +5,8 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "forge-std/console.sol";
+
 error TransferFailed();
 error NeedsMoreThanZero();
 
@@ -39,6 +41,7 @@ contract Staking is ReentrancyGuard {
      * @notice How much reward a token gets based on how long it's been in and during which "snapshots"
      */
     function rewardPerToken() public view returns (uint256) {
+      console.log('function rewardPerToken() public view returns (uint256):::');
         if (s_totalSupply == 0) {
             return s_rewardPerTokenStored;
         }
@@ -51,9 +54,17 @@ contract Staking is ReentrancyGuard {
      * @notice How much reward a user has earned
      */
     function earned(address account) public view returns (uint256) {
+      console.log('function earned(address account) public view returns (uint256):::');
+      uint256 _balance = s_balances[account];
+      uint256 _rewardPerToken = rewardPerToken();// 1.1 ->
+      uint256 _s_userRewardPerTokenPaid = s_userRewardPerTokenPaid[account]; // 1
+      uint256 _s_rewards = s_rewards[account]; // 10
+      console.log('((s_balances[account]:', s_balances[account], '*(rewardPerToken(): ', _rewardPerToken);
+      console.log('- s_userRewardPerTokenPaid[account]: ', _s_userRewardPerTokenPaid, ')) / 1e18) + _s_rewards: ', s_rewards[account]);
+
         return
-            ((s_balances[account] * (rewardPerToken() - s_userRewardPerTokenPaid[account])) /
-                1e18) + s_rewards[account];
+            ((_balance * (_rewardPerToken - _s_userRewardPerTokenPaid)) /
+                1e18) + _s_rewards;
     }
 
     /**
@@ -66,13 +77,18 @@ contract Staking is ReentrancyGuard {
         nonReentrant
         moreThanZero(amount)
     {
+        console.log('function stake(uint256 amount) external updateReward(msg.sender) nonReentrant moreThanZero(amount):::');
         s_totalSupply += amount;
+        console.log('Stake():increase total supply with ', amount, s_totalSupply);
         s_balances[msg.sender] += amount;
+        console.log('Stake():s_balances[msg.sender] increase with ', amount, s_balances[msg.sender]);
         emit Staked(msg.sender, amount);
         bool success = s_stakingToken.transferFrom(msg.sender, address(this), amount);
         if (!success) {
             revert TransferFailed();
         }
+
+        console.log('successfully staked (transfered)', amount, ' to ', 'contract');
     }
 
     /**
@@ -80,36 +96,50 @@ contract Staking is ReentrancyGuard {
      * @param amount | How much to withdraw
      */
     function withdraw(uint256 amount) external updateReward(msg.sender) nonReentrant {
+        console.log('function withdraw(uint256 amount) external updateReward(msg.sender) nonReentrant:::');
         s_totalSupply -= amount;
+        console.log('withdraw():lower s_totalSupply with', amount);
         s_balances[msg.sender] -= amount;
+        console.log('withdraw():lower s_balances[msg.sender] with', amount, s_balances[msg.sender]);
         emit WithdrewStake(msg.sender, amount);
         bool success = s_stakingToken.transfer(msg.sender, amount);
         if (!success) {
             revert TransferFailed();
         }
+        console.log('successfully withdrew (transfered)', amount, ' to ', msg.sender);
     }
 
     /**
      * @notice User claims their tokens
      */
     function claimReward() external updateReward(msg.sender) nonReentrant {
+        console.log('function claimReward() external updateReward(msg.sender) nonReentrant:::');
         uint256 reward = s_rewards[msg.sender];
         s_rewards[msg.sender] = 0;
+        console.log('withdraw():set s_rewards[msg.sender] to 0');
         emit RewardsClaimed(msg.sender, reward);
         bool success = s_rewardsToken.transfer(msg.sender, reward);
         if (!success) {
             revert TransferFailed();
         }
+        console.log('successfully claimed (transfered)', reward, ' to ', msg.sender);
     }
 
     /********************/
     /* Modifiers Functions */
     /********************/
-    modifier updateReward(address account) {
-        s_rewardPerTokenStored = rewardPerToken();
-        s_lastUpdateTime = block.timestamp;
+    modifier updateReward(address account) {// runs at stake, withdraw, claimReward
+        console.log('modifier updateReward(address account):::');
+        console.log(' ---- updateReward start ----');
+        s_rewardPerTokenStored = rewardPerToken(); // 1.1
+        console.log('s_rewardPerTokenStored', s_rewardPerTokenStored);
+        s_lastUpdateTime = block.timestamp;// +1
+        console.log('s_lastUpdateTime', s_lastUpdateTime);
         s_rewards[account] = earned(account);
+        console.log('s_rewards[account]', s_rewards[account]);
         s_userRewardPerTokenPaid[account] = s_rewardPerTokenStored;
+        console.log('s_userRewardPerTokenPaid[account]', s_userRewardPerTokenPaid[account]);
+        console.log(' ---- updateReward end ----');
         _;
     }
 
